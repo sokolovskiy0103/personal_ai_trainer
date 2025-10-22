@@ -46,9 +46,7 @@ class GoogleDriveStorage:
             "trashed=false"
         )
         results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id, name)")
-            .execute()
+            self.service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
         )
         files = results.get("files", [])
 
@@ -83,9 +81,7 @@ class GoogleDriveStorage:
             "trashed=false"
         )
         results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id, name)")
-            .execute()
+            self.service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
         )
         files = results.get("files", [])
 
@@ -124,23 +120,15 @@ class GoogleDriveStorage:
                 folder_id = self._ensure_subfolder(folder_id, part)
 
         # Check if file exists
-        query = (
-            f"name='{filename}' and "
-            f"'{folder_id}' in parents and "
-            "trashed=false"
-        )
+        query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
         results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id, name)")
-            .execute()
+            self.service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
         )
         existing_files = results.get("files", [])
 
         # Convert data to JSON
         json_data = json.dumps(data, ensure_ascii=False, indent=2)
-        media = MediaIoBaseUpload(
-            BytesIO(json_data.encode("utf-8")), mimetype="application/json"
-        )
+        media = MediaIoBaseUpload(BytesIO(json_data.encode("utf-8")), mimetype="application/json")
 
         if existing_files:
             # Update existing file
@@ -194,16 +182,8 @@ class GoogleDriveStorage:
                 return None
 
         # Find file
-        query = (
-            f"name='{filename}' and "
-            f"'{folder_id}' in parents and "
-            "trashed=false"
-        )
-        results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id)")
-            .execute()
-        )
+        query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
+        results = self.service.files().list(q=query, spaces="drive", fields="files(id)").execute()
         files = results.get("files", [])
 
         if not files:
@@ -258,16 +238,8 @@ class GoogleDriveStorage:
                 return False
 
         # Find and delete file
-        query = (
-            f"name='{filename}' and "
-            f"'{folder_id}' in parents and "
-            "trashed=false"
-        )
-        results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id)")
-            .execute()
-        )
+        query = f"name='{filename}' and '{folder_id}' in parents and trashed=false"
+        results = self.service.files().list(q=query, spaces="drive", fields="files(id)").execute()
         files = results.get("files", [])
 
         if not files:
@@ -301,9 +273,7 @@ class GoogleDriveStorage:
                     "trashed=false"
                 )
                 results = (
-                    self.service.files()
-                    .list(q=query, spaces="drive", fields="files(id)")
-                    .execute()
+                    self.service.files().list(q=query, spaces="drive", fields="files(id)").execute()
                 )
                 files = results.get("files", [])
                 if not files:
@@ -339,9 +309,7 @@ class GoogleDriveStorage:
             "trashed=false"
         )
         results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id, name)")
-            .execute()
+            self.service.files().list(q=query, spaces="drive", fields="files(id, name)").execute()
         )
         files = results.get("files", [])
 
@@ -418,7 +386,9 @@ class GoogleDriveStorage:
         reps_str = ", ".join(str(r) for r in reps)
         weights_str = ", ".join(str(w) for w in weights)
 
-        values = [[date, exercise_name, sets, reps_str, weights_str, duration_minutes, notes, feedback]]
+        values = [
+            [date, exercise_name, sets, reps_str, weights_str, duration_minutes, notes, feedback]
+        ]
 
         body = {"values": values}
 
@@ -500,22 +470,12 @@ class GoogleDriveStorage:
         folder_id = self._ensure_app_folder()
 
         # Check if file exists
-        query = (
-            f"name='{self.MEMORY_FILENAME}' and "
-            f"'{folder_id}' in parents and "
-            "trashed=false"
-        )
-        results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id)")
-            .execute()
-        )
+        query = f"name='{self.MEMORY_FILENAME}' and '{folder_id}' in parents and trashed=false"
+        results = self.service.files().list(q=query, spaces="drive", fields="files(id)").execute()
         existing_files = results.get("files", [])
 
         # Convert content to bytes
-        media = MediaIoBaseUpload(
-            BytesIO(content.encode("utf-8")), mimetype="text/plain"
-        )
+        media = MediaIoBaseUpload(BytesIO(content.encode("utf-8")), mimetype="text/plain")
 
         if existing_files:
             # Update existing file
@@ -524,9 +484,7 @@ class GoogleDriveStorage:
         else:
             # Create new file
             file_metadata = {"name": self.MEMORY_FILENAME, "parents": [folder_id]}
-            self.service.files().create(
-                body=file_metadata, media_body=media, fields="id"
-            ).execute()
+            self.service.files().create(body=file_metadata, media_body=media, fields="id").execute()
 
     def load_memory(self) -> str:
         """
@@ -538,16 +496,8 @@ class GoogleDriveStorage:
         folder_id = self._ensure_app_folder()
 
         # Find file
-        query = (
-            f"name='{self.MEMORY_FILENAME}' and "
-            f"'{folder_id}' in parents and "
-            "trashed=false"
-        )
-        results = (
-            self.service.files()
-            .list(q=query, spaces="drive", fields="files(id)")
-            .execute()
-        )
+        query = f"name='{self.MEMORY_FILENAME}' and '{folder_id}' in parents and trashed=false"
+        results = self.service.files().list(q=query, spaces="drive", fields="files(id)").execute()
         files = results.get("files", [])
 
         if not files:

@@ -54,9 +54,7 @@ class WorkoutLog(BaseModel):
     )
     duration_minutes: int = Field(0, ge=0, description="Actual workout duration")
     skipped: bool = Field(default=False, description="Was the workout skipped?")
-    skip_reason: Optional[str] = Field(
-        None, description="Reason for skipping (if applicable)"
-    )
+    skip_reason: Optional[str] = Field(None, description="Reason for skipping (if applicable)")
 
     class Config:
         json_schema_extra = {

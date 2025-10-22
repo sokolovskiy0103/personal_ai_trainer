@@ -7,7 +7,9 @@ import streamlit as st
 
 if hasattr(st, "secrets") and "LANGSMITH_API_KEY" in st.secrets:
     os.environ["LANGSMITH_TRACING"] = st.secrets.get("LANGSMITH_TRACING", "true")
-    os.environ["LANGSMITH_ENDPOINT"] = st.secrets.get("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com")
+    os.environ["LANGSMITH_ENDPOINT"] = st.secrets.get(
+        "LANGSMITH_ENDPOINT", "https://api.smith.langchain.com"
+    )
     os.environ["LANGSMITH_API_KEY"] = st.secrets["LANGSMITH_API_KEY"]
     os.environ["LANGSMITH_PROJECT"] = st.secrets.get("LANGSMITH_PROJECT", "personal_ai_trainer")
     os.environ["LANGCHAIN_TRACING_V2"] = "true"
@@ -15,8 +17,7 @@ if hasattr(st, "secrets") and "LANGSMITH_API_KEY" in st.secrets:
     os.environ["LANGCHAIN_PROJECT"] = st.secrets.get("LANGSMITH_PROJECT", "personal_ai_trainer")
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 from src.memory.gdrive_memory import GoogleDriveStorage  # noqa: E402
@@ -168,7 +169,9 @@ def handle_oauth_callback() -> None:
 
         if not check_user_access(user_email):
             logger.warning(f"Access denied: {user_email}")
-            st.error("🚫 Доступ заборонено. Цей додаток доступний тільки для авторизованих користувачів.")
+            st.error(
+                "🚫 Доступ заборонено. Цей додаток доступний тільки для авторизованих користувачів."
+            )
             st.stop()
 
         st.session_state.credentials = credentials_to_dict(credentials)
@@ -276,12 +279,13 @@ def login_page() -> None:
             redirect_uri = get_redirect_uri()
             auth_url = get_authorization_url(client_config, redirect_uri)
             st.markdown(
-                f'<meta http-equiv="refresh" content="0;url={auth_url}">',
-                unsafe_allow_html=True
+                f'<meta http-equiv="refresh" content="0;url={auth_url}">', unsafe_allow_html=True
             )
 
     st.markdown("---")
-    st.info("ℹ️ Твої дані будуть зберігатися на твоєму Google Drive. Ніхто крім тебе не матиме до них доступу.")
+    st.info(
+        "ℹ️ Твої дані будуть зберігатися на твоєму Google Drive. Ніхто крім тебе не матиме до них доступу."
+    )
 
 
 def main_app() -> None:
@@ -323,24 +327,19 @@ def main_app() -> None:
 
         st.markdown("### 📋 Швидкі дії")
         if st.button("💪 Почати тренування", use_container_width=True):
-            st.session_state.chat_history.append({
-                "role": "user",
-                "content": "Хочу почати тренування"
-            })
+            st.session_state.chat_history.append(
+                {"role": "user", "content": "Хочу почати тренування"}
+            )
             st.rerun()
 
         if st.button("📊 Переглянути прогрес", use_container_width=True):
-            st.session_state.chat_history.append({
-                "role": "user",
-                "content": "Покажи мій прогрес"
-            })
+            st.session_state.chat_history.append({"role": "user", "content": "Покажи мій прогрес"})
             st.rerun()
 
         if st.button("✏️ Змінити план", use_container_width=True):
-            st.session_state.chat_history.append({
-                "role": "user",
-                "content": "Хочу змінити план тренувань"
-            })
+            st.session_state.chat_history.append(
+                {"role": "user", "content": "Хочу змінити план тренувань"}
+            )
             st.rerun()
 
         st.markdown("---")
@@ -369,10 +368,7 @@ def main_app() -> None:
         message_to_process = pending_message if pending_message else user_input
 
         if not pending_message:
-            st.session_state.chat_history.append({
-                "role": "user",
-                "content": user_input
-            })
+            st.session_state.chat_history.append({"role": "user", "content": user_input})
             st.chat_message("user").write(user_input)
 
         gemini_client = st.session_state.gemini_client
@@ -390,10 +386,7 @@ def main_app() -> None:
 
                 message_placeholder.markdown(full_response)
 
-            st.session_state.chat_history.append({
-                "role": "assistant",
-                "content": full_response
-            })
+            st.session_state.chat_history.append({"role": "assistant", "content": full_response})
         except Exception as e:
             st.error(f"Помилка: {str(e)}")
 
@@ -414,6 +407,7 @@ def main() -> None:
     if not storage.is_ready():
         st.info("Завантаження...")
         import time
+
         time.sleep(0.5)
         st.rerun()
         return

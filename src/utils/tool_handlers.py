@@ -15,13 +15,11 @@ from src.utils.storage_helpers import (
 
 logger = logging.getLogger(__name__)
 
-# Global storage and user email (will be set by app.py)
 _storage: Optional[GoogleDriveStorage] = None
 _user_email: str = ""
 
 
 def set_storage_context(storage: GoogleDriveStorage, user_email: str) -> None:
-    """Set storage and user context for tools."""
     global _storage, _user_email
     _storage = storage
     _user_email = user_email
@@ -37,28 +35,11 @@ def save_user_profile(
     preferences: Optional[Dict[str, Any]] = None,
     additional_notes: Optional[str] = None,
 ) -> str:
-    """Save or update user profile to Google Drive.
-
-    Use this function after completing onboarding or when user updates their data.
-
-    Args:
-        goals: User's fitness goals (weight loss, muscle gain, endurance, strength)
-        fitness_level: Fitness level (beginner, intermediate, advanced)
-        schedule: Available days and training times, e.g. {"Monday": "18:00-19:00"}
-        health_conditions: Injuries, illnesses, health limitations
-        equipment_available: Available equipment (bodyweight, dumbbells, barbell, etc.)
-        preferences: Training preferences (must be object!), e.g. {"training_type": "strength"}
-        additional_notes: Arbitrary notes about user for future interactions
-
-    Returns:
-        Success or error message
-    """
+    """Зберегти профіль користувача на Google Drive після онбордингу або оновлення даних."""
     if not _storage:
         return "ERROR: Storage not initialized"
 
     try:
-        logger.info(f"Saving user profile for {_user_email}")
-
         profile_data = {
             "goals": goals,
             "fitness_level": fitness_level,
@@ -72,14 +53,10 @@ def save_user_profile(
         profile = create_user_profile_from_dict(_user_email, profile_data)
         profile_dict = profile.model_dump(mode="json")
         _storage.save_json("profile.json", profile_dict)
-
-        logger.info("User profile saved successfully")
         return f"✅ Profile saved successfully! Goals: {', '.join(goals)}, Level: {fitness_level}"
-
     except Exception as e:
-        error_msg = f"❌ Error saving profile: {str(e)}"
-        logger.error(error_msg, exc_info=True)
-        return error_msg
+        logger.error(f"Error saving profile: {e}", exc_info=True)
+        return f"❌ Error saving profile: {str(e)}"
 
 
 @tool
@@ -359,21 +336,21 @@ def build_user_context() -> str:
             context_parts.append(f"Fitness level: {profile_data.get('fitness_level', 'N/A')}")
             context_parts.append(f"Goals: {', '.join(profile_data.get('goals', []))}")
 
-            schedule = profile_data.get('schedule', {})
+            schedule = profile_data.get("schedule", {})
             if schedule:
                 context_parts.append("Training schedule:")
                 for day, time in schedule.items():
                     context_parts.append(f"  - {day}: {time}")
 
-            health = profile_data.get('health_conditions', [])
+            health = profile_data.get("health_conditions", [])
             if health:
                 context_parts.append(f"⚠️ Health limitations: {', '.join(health)}")
 
-            equipment = profile_data.get('equipment_available', [])
+            equipment = profile_data.get("equipment_available", [])
             if equipment:
                 context_parts.append(f"Available equipment: {', '.join(equipment)}")
 
-            notes = profile_data.get('additional_notes', '')
+            notes = profile_data.get("additional_notes", "")
             if notes:
                 context_parts.append(f"Additional notes: {notes}")
 
@@ -391,12 +368,12 @@ def build_user_context() -> str:
             context_parts.append(f"Workouts per week: {plan_data.get('days_per_week', 'N/A')}")
             context_parts.append(f"Status: {plan_data.get('status', 'N/A')}")
 
-            notes = plan_data.get('notes', '')
+            notes = plan_data.get("notes", "")
             if notes:
                 context_parts.append(f"Plan notes: {notes}")
 
             # Count total workouts
-            plan = plan_data.get('plan', {})
+            plan = plan_data.get("plan", {})
             total_workouts = sum(len(days) for days in plan.values())
             context_parts.append(f"Total workouts in plan: {total_workouts}")
             context_parts.append("")
@@ -412,7 +389,7 @@ def build_user_context() -> str:
             # Group by date and take last 3 unique dates
             workouts_by_date = {}
             for log in logs:
-                date = log.get('date', '')
+                date = log.get("date", "")
                 if date not in workouts_by_date:
                     workouts_by_date[date] = []
                 workouts_by_date[date].append(log)
@@ -423,11 +400,11 @@ def build_user_context() -> str:
             for date, exercises in recent_workouts:
                 context_parts.append(f"\n📅 {date}:")
                 for ex in exercises:
-                    ex_name = ex.get('exercise_name', '')
-                    sets = ex.get('sets', '')
-                    reps = ex.get('reps', '')
-                    weights = ex.get('weights', '')
-                    notes = ex.get('notes', '')
+                    ex_name = ex.get("exercise_name", "")
+                    sets = ex.get("sets", "")
+                    reps = ex.get("reps", "")
+                    weights = ex.get("weights", "")
+                    notes = ex.get("notes", "")
 
                     line = f"  • {ex_name}: {sets} sets ({reps})"
                     if weights and weights != "0, 0, 0":
@@ -438,7 +415,7 @@ def build_user_context() -> str:
                         context_parts.append(f"    💬 {notes}")
 
                 # Add feedback if present (same for all exercises in session)
-                if exercises and exercises[0].get('feedback'):
+                if exercises and exercises[0].get("feedback"):
                     context_parts.append(f"  Feedback: {exercises[0]['feedback']}")
 
             context_parts.append("")
@@ -518,4 +495,3 @@ def get_all_tools() -> List:
         update_memory,
         get_workout_logs,
     ]
-

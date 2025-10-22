@@ -65,7 +65,7 @@ class SecureCredentialStorage:
         try:
             cookie_manager = self._get_cookie_manager()
             # Check if cookie manager has initialized
-            return cookie_manager is not None and hasattr(cookie_manager, 'get_all')
+            return cookie_manager is not None and hasattr(cookie_manager, "get_all")
         except Exception as e:
             logger.debug(f"Cookie manager not ready: {e}")
             return False
@@ -98,7 +98,7 @@ class SecureCredentialStorage:
                 self.cookie_name,
                 encrypted.decode(),
                 expires_at=None,  # Uses default expiry
-                max_age=self.expiry_days * 24 * 60 * 60  # Convert days to seconds
+                max_age=self.expiry_days * 24 * 60 * 60,  # Convert days to seconds
             )
 
             logger.info("Credentials saved to encrypted cookie")

@@ -16,9 +16,7 @@ class Exercise(BaseModel):
     )
     weight: Optional[float] = Field(None, description="Weight in kg (if applicable)")
     rest_seconds: int = Field(60, ge=0, description="Rest time between sets in seconds")
-    instructions: str = Field(
-        default="", description="Exercise instructions and technique tips"
-    )
+    instructions: str = Field(default="", description="Exercise instructions and technique tips")
 
     class Config:
         json_schema_extra = {
@@ -39,9 +37,7 @@ class WorkoutDay(BaseModel):
     day_name: str = Field(..., description="Day name, e.g., 'Понеділок' or 'Верх тіла'")
     exercises: List[Exercise] = Field(default_factory=list)
     notes: str = Field(default="", description="Additional notes for the day")
-    estimated_duration_minutes: int = Field(
-        45, ge=0, description="Estimated workout duration"
-    )
+    estimated_duration_minutes: int = Field(45, ge=0, description="Estimated workout duration")
 
     class Config:
         json_schema_extra = {
@@ -73,9 +69,7 @@ class WorkoutPlan(BaseModel):
         description="Workout plan organized by weeks, e.g., {'week_1': [day1, day2, ...]}",
     )
     created_at: datetime = Field(default_factory=datetime.now)
-    status: str = Field(
-        default="active", description="Plan status: active, completed, paused"
-    )
+    status: str = Field(default="active", description="Plan status: active, completed, paused")
     notes: str = Field(default="", description="General plan notes and goals")
 
     class Config:
