@@ -2,10 +2,11 @@
 
 import json
 import logging
-from typing import Optional, Dict, Any
-from cryptography.fernet import Fernet
-import streamlit as st
+from typing import Any, Dict, Optional
+
 import extra_streamlit_components as stx
+import streamlit as st
+from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 

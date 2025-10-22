@@ -20,6 +20,9 @@ dependencies = [
     "requests>=2.31.0",
     "extra-streamlit-components>=0.1.71",
     "cryptography>=41.0.0",
+    "tomli>=2.3.0",
+    "langchain-ollama>=0.3.10",
+    "langchain-anthropic>=0.3.22",
 ]
 
 [project.optional-dependencies]
@@ -49,3 +52,8 @@ python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.1",
+]

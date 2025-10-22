@@ -1,12 +1,12 @@
 """Helper functions for AI to interact with storage."""
 
-from typing import Dict, Any, Optional
-from datetime import datetime
 import uuid
+from datetime import datetime
+from typing import Any, Dict
 
 from src.models.user_profile import UserProfile
-from src.models.workout_plan import WorkoutPlan, WorkoutDay, Exercise
-from src.models.workout_log import WorkoutLog, CompletedExercise
+from src.models.workout_log import CompletedExercise, WorkoutLog
+from src.models.workout_plan import Exercise, WorkoutDay, WorkoutPlan
 
 
 def create_user_profile_from_dict(user_id: str, profile_data: Dict[str, Any]) -> UserProfile:
@@ -292,7 +292,7 @@ def format_user_profile_for_context(profile: UserProfile) -> str:
     output += f"- Цілі: {', '.join(profile.goals)}\n"
 
     if profile.schedule:
-        output += f"- Розклад:\n"
+        output += "- Розклад:\n"
         for day, time in profile.schedule.items():
             output += f"  - {day}: {time}\n"
 

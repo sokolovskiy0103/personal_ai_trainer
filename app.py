@@ -1,32 +1,40 @@
 """Personal AI Trainer - Streamlit App."""
 
 import logging
-import streamlit as st
-from datetime import datetime
+import os
 
-# Configure logging
+import streamlit as st
+
+if hasattr(st, "secrets") and "LANGSMITH_API_KEY" in st.secrets:
+    os.environ["LANGSMITH_TRACING"] = st.secrets.get("LANGSMITH_TRACING", "true")
+    os.environ["LANGSMITH_ENDPOINT"] = st.secrets.get("LANGSMITH_ENDPOINT", "https://api.smith.langchain.com")
+    os.environ["LANGSMITH_API_KEY"] = st.secrets["LANGSMITH_API_KEY"]
+    os.environ["LANGSMITH_PROJECT"] = st.secrets.get("LANGSMITH_PROJECT", "personal_ai_trainer")
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    os.environ["LANGCHAIN_API_KEY"] = st.secrets["LANGSMITH_API_KEY"]
+    os.environ["LANGCHAIN_PROJECT"] = st.secrets.get("LANGSMITH_PROJECT", "personal_ai_trainer")
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-from src.memory.gdrive_memory import GoogleDriveStorage
-from src.models.user_profile import UserProfile
-from src.models.workout_plan import WorkoutPlan
-from src.utils.gemini_langchain_client import GeminiLangChainClient
-from src.utils.tool_handlers import set_storage_context
-from src.utils.prompts import SYSTEM_PROMPT
-from src.utils.google_auth import (
-    get_authorization_url,
-    exchange_code_for_token,
-    credentials_to_dict,
+from src.memory.gdrive_memory import GoogleDriveStorage  # noqa: E402
+from src.models.user_profile import UserProfile  # noqa: E402
+from src.models.workout_plan import WorkoutPlan  # noqa: E402
+from src.utils.anthropic_langchain_client import AnthropicLangChainClient  # noqa: E402
+from src.utils.google_auth import (  # noqa: E402
     credentials_from_dict,
-    refresh_credentials,
+    credentials_to_dict,
+    exchange_code_for_token,
+    get_authorization_url,
     get_user_info,
+    refresh_credentials,
     revoke_credentials,
 )
-from src.utils.secure_storage import get_secure_storage
+from src.utils.prompts import SYSTEM_PROMPT  # noqa: E402
+from src.utils.secure_storage import get_secure_storage  # noqa: E402
+from src.utils.tool_handlers import build_user_context, set_storage_context  # noqa: E402
 
 # Page config
 st.set_page_config(
@@ -89,6 +97,53 @@ def get_client_config() -> dict:
     }
 
 
+def check_user_access(email: str) -> bool:
+    """
+    Check if user email is in allowed list.
+
+    Args:
+        email: User email to check
+
+    Returns:
+        True if user is allowed, False otherwise
+    """
+    # Get allowed emails from secrets
+    # Streamlit secrets can be accessed via dict-style or attribute-style
+    allowed_emails = []
+
+    # Debug: log all secrets keys (without values for security)
+    logger.info(f"Available secrets keys: {list(st.secrets.keys())}")
+
+    try:
+        # Try dict-style access first
+        if "allowed_emails" in st.secrets:
+            allowed_emails = st.secrets["allowed_emails"]
+        # Try attribute-style access
+        elif hasattr(st.secrets, "allowed_emails"):
+            allowed_emails = st.secrets.allowed_emails
+
+        # Convert to list if needed
+        if isinstance(allowed_emails, str):
+            allowed_emails = [allowed_emails]
+        elif not isinstance(allowed_emails, (list, tuple)):
+            allowed_emails = list(allowed_emails) if allowed_emails else []
+
+        logger.info(f"Loaded allowed_emails: {allowed_emails}")
+
+    except Exception as e:
+        logger.warning(f"Error reading allowed_emails from secrets: {e}")
+        allowed_emails = []
+
+    # If no whitelist configured, deny access (fail-safe)
+    if not allowed_emails:
+        logger.warning("No allowed_emails configured in secrets - denying access")
+        return False
+
+    is_allowed = email in allowed_emails
+    logger.info(f"Access check for {email}: {'ALLOWED' if is_allowed else 'DENIED'}")
+    return is_allowed
+
+
 def restore_session_from_cookie() -> bool:
     """
     Try to restore authentication from cookie.
@@ -118,12 +173,19 @@ def restore_session_from_cookie() -> bool:
         # Get user info
         user_info = get_user_info(creds)
 
+        # Check if user is allowed
+        user_email = user_info.get("email")
+        if not check_user_access(user_email):
+            logger.warning(f"Access denied for user: {user_email} (from cookie)")
+            storage.clear_credentials()
+            return False
+
         # Restore session
         st.session_state.authenticated = True
         st.session_state.credentials = credentials_to_dict(creds)
         st.session_state.user_info = user_info
 
-        logger.info(f"Restored session from cookie for {user_info.get('email')}")
+        logger.info(f"Restored session from cookie for {user_email}")
         return True
 
     except Exception as e:
@@ -163,6 +225,13 @@ def handle_oauth_callback() -> None:
         user_info = get_user_info(credentials)
         logger.info(f"Got user info for: {user_info.get('email')}")
 
+        # Check if user is allowed
+        user_email = user_info.get("email")
+        if not check_user_access(user_email):
+            logger.warning(f"Access denied for user: {user_email}")
+            st.error("🚫 Доступ заборонено. Цей додаток доступний тільки для авторизованих користувачів.")
+            st.stop()
+
         # Store credentials and user info in session state
         st.session_state.credentials = credentials_to_dict(credentials)
         st.session_state.user_info = user_info
@@ -198,34 +267,12 @@ def load_user_data() -> None:
         if plan_data:
             st.session_state.current_plan = WorkoutPlan(**plan_data)
 
-        # Load chat history
-        chat_data = storage.load_json("chat_history.json")
-        if chat_data:
-            st.session_state.chat_history = chat_data.get("messages", [])
-
         st.session_state.data_loaded = True
         logger.info("User data loaded successfully")
 
     except Exception as e:
         logger.warning(f"Failed to load user data: {e}")
         st.warning(f"Не вдалося завантажити дані: {str(e)}")
-
-
-def save_chat_history() -> None:
-    """Save chat history to Google Drive."""
-    if not st.session_state.drive_storage:
-        return
-
-    storage: GoogleDriveStorage = st.session_state.drive_storage
-
-    try:
-        storage.save_json("chat_history.json", {
-            "messages": st.session_state.chat_history,
-            "last_updated": datetime.now().isoformat()
-        })
-    except Exception as e:
-        # Fail silently for chat history to not interrupt user flow
-        logger.warning(f"Failed to save chat history: {e}")
 
 
 def initialize_services() -> None:
@@ -243,13 +290,27 @@ def initialize_services() -> None:
         st.session_state.drive_storage = GoogleDriveStorage(creds)
         load_user_data()
 
-    # Initialize Gemini client
+    # Initialize Claude client
     if not st.session_state.gemini_client:
-        gemini_api_key = st.secrets["GEMINI_API_KEY"]
-        st.session_state.gemini_client = GeminiLangChainClient(
-            api_key=gemini_api_key,
+        # Get Anthropic API key from secrets
+        anthropic_api_key = st.secrets.get("ANTHROPIC_API_KEY")
+        if not anthropic_api_key:
+            st.error("ANTHROPIC_API_KEY not found in secrets.toml")
+            st.stop()
+
+        st.session_state.gemini_client = AnthropicLangChainClient(
+            api_key=anthropic_api_key,
             system_instruction=SYSTEM_PROMPT,
+            model_name="claude-haiku-4-5-20251001",
+            temperature=0.7,
         )
+
+        # Build and add user context ONCE at initialization
+        # This ensures prompt caching works (needs >4096 tokens total)
+        user_context = build_user_context()
+        if user_context:
+            st.session_state.gemini_client.update_system_instruction(user_context)
+            logger.info("Added user context to system prompt for caching")
 
     # Set storage context for tools
     if st.session_state.drive_storage and st.session_state.user_info:
@@ -362,7 +423,6 @@ def main_app() -> None:
                 "role": "user",
                 "content": "Хочу почати тренування"
             })
-            save_chat_history()
             st.rerun()
 
         if st.button("📊 Переглянути прогрес", use_container_width=True):
@@ -370,7 +430,6 @@ def main_app() -> None:
                 "role": "user",
                 "content": "Покажи мій прогрес"
             })
-            save_chat_history()
             st.rerun()
 
         if st.button("✏️ Змінити план", use_container_width=True):
@@ -378,7 +437,6 @@ def main_app() -> None:
                 "role": "user",
                 "content": "Хочу змінити план тренувань"
             })
-            save_chat_history()
             st.rerun()
 
         st.markdown("---")
@@ -419,28 +477,34 @@ def main_app() -> None:
                 "role": "user",
                 "content": user_input
             })
+            # Show new user message in UI
+            st.chat_message("user").write(user_input)
 
         # Get AI response
         gemini_client = st.session_state.gemini_client
 
         # Initialize chat if needed
-        if not gemini_client.chat_session:
+        if not gemini_client.chat_history:
             gemini_client.start_chat(history=st.session_state.chat_history[:-1])
 
         try:
-            with st.spinner("Тренер думає..."):
-                response = gemini_client.send_message(message_to_process)
+            # Stream AI response
+            with st.chat_message("assistant"):
+                message_placeholder = st.empty()
+                full_response = ""
+
+                for chunk in gemini_client.send_message_stream(message_to_process):
+                    full_response += chunk
+                    message_placeholder.markdown(full_response + "▌")
+
+                # Show final response without cursor
+                message_placeholder.markdown(full_response)
 
             # Add AI response to history
             st.session_state.chat_history.append({
                 "role": "assistant",
-                "content": response
+                "content": full_response
             })
-
-            # Save chat history to Drive
-            save_chat_history()
-
-            st.rerun()
 
         except Exception as e:
             st.error(f"Помилка: {str(e)}")

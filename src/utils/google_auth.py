@@ -1,12 +1,12 @@
 """Google OAuth authentication utilities for Streamlit."""
 
-import json
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict
+
+import requests
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
-from google.auth.transport.requests import Request
-import requests
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/drive.file',  # Access to files created by the app
+    'https://www.googleapis.com/auth/spreadsheets',  # Access to Google Sheets
 ]
 
 
